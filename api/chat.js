@@ -11,13 +11,13 @@ module.exports = async (req, res) => {
   try {
     const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
+      headers: { "Content-Type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY || "" },
       body: JSON.stringify({ system_instruction: { parts: [{ text: system }] }, contents })
     });
     const data = await r.json();
-    const reply = data?.candidates?.[0]?.content?.parts?.map(p => p.text).join("") || "Jawab nahi aaya, dobara try karo.";
+    const reply = data?.candidates?.[0]?.content?.parts?.map(p => p.text).join("") || ("Error: " + (data?.error?.message || JSON.stringify(data).slice(0, 300)));
     res.status(200).json({ reply });
   } catch (e) {
-    res.status(500).json({ reply: "Server error." });
+    res.status(500).json({ reply: "Server error: " + e.message });
   }
 };
