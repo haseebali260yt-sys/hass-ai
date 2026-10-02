@@ -4,37 +4,84 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>hass.ai</title>
 <style>
-body{margin:0;font-family:Arial,sans-serif;background:#0f1117;color:#fff;display:flex;flex-direction:column;height:100vh}
-header{padding:12px 16px;background:#181b24;display:flex;justify-content:space-between;align-items:center}
-h1{margin:0;font-size:20px}
-#student{background:#2a2f3d;color:#fff;border:0;padding:8px 12px;border-radius:20px;cursor:pointer}
-#student.on{background:#22c55e}
-#chat{flex:1;overflow-y:auto;padding:16px}
-.m{max-width:85%;margin:8px 0;padding:10px 14px;border-radius:14px;white-space:pre-wrap;line-height:1.4}
-.u{background:#3b82f6;margin-left:auto}
-.b{background:#232838}
-footer{display:flex;gap:8px;padding:12px;background:#181b24}
-input{flex:1;padding:12px;border-radius:24px;border:0;background:#2a2f3d;color:#fff;font-size:16px}
-#send{background:#3b82f6;color:#fff;border:0;padding:0 18px;border-radius:24px;cursor:pointer}
+*{box-sizing:border-box}
+body{margin:0;height:100vh;display:flex;flex-direction:column;font-family:system-ui,Arial,sans-serif;background:#0b0d14;color:#e8eaf2}
+header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#11141f;border-bottom:1px solid #1f2433}
+.logo{font-weight:800;font-size:20px;background:linear-gradient(90deg,#6366f1,#22d3ee);-webkit-background-clip:text;color:transparent}
+.btns{display:flex;gap:8px}
+.btns button{background:#1b2030;color:#e8eaf2;border:1px solid #2a3047;padding:8px 12px;border-radius:20px;cursor:pointer;font-size:13px}
+#student.on{background:#16a34a;border-color:#16a34a}
+#chat{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;max-width:800px;width:100%;margin:0 auto}
+.row{display:flex;gap:8px;align-items:flex-start}
+.row.u{flex-direction:row-reverse}
+.av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#22d3ee);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex:none}
+.row.u .av{background:#334155}
+.m{max-width:80%;padding:10px 14px;border-radius:16px;line-height:1.5;word-wrap:break-word}
+.b .m{background:#161a28;border:1px solid #232940;border-top-left-radius:4px}
+.u .m{background:#4f46e5;border-top-right-radius:4px}
+.m img{max-width:100%;border-radius:10px;display:block;margin-bottom:6px}
+pre{background:#0b0d14;padding:10px;border-radius:8px;overflow-x:auto;white-space:pre-wrap}
+code{background:#0b0d14;padding:2px 5px;border-radius:5px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chips button{background:#161a28;color:#c7d2fe;border:1px solid #2a3047;padding:8px 12px;border-radius:16px;cursor:pointer;font-size:13px}
+footer{padding:12px;background:#11141f;border-top:1px solid #1f2433}
+.box{max-width:800px;margin:0 auto}
+#prev{display:none;margin-bottom:8px;position:relative;width:80px}
+#prev img{width:80px;height:80px;object-fit:cover;border-radius:10px}
+#prev span{position:absolute;top:-6px;right:-6px;background:#ef4444;border-radius:50%;width:20px;height:20px;text-align:center;cursor:pointer;font-size:13px}
+.bar{display:flex;gap:8px;align-items:flex-end}
+textarea{flex:1;resize:none;max-height:120px;padding:12px;border-radius:20px;border:1px solid #2a3047;background:#1b2030;color:#fff;font-size:16px;font-family:inherit}
+.ic{background:#1b2030;border:1px solid #2a3047;color:#fff;width:44px;height:44px;border-radius:50%;cursor:pointer;font-size:18px;flex:none}
+#send{background:linear-gradient(135deg,#6366f1,#22d3ee);border:0}
+.dots span{animation:b 1s infinite;display:inline-block}
+.dots span:nth-child(2){animation-delay:.2s}.dots span:nth-child(3){animation-delay:.4s}
+@keyframes b{0%,100%{opacity:.2}50%{opacity:1}}
 </style></head><body>
-<header><h1>hass.ai</h1><button id="student">Student Mode: OFF</button></header>
-<div id="chat"><div class="m b">Salam! Main hass.ai hon. Kuch bhi pucho 😄</div></div>
-<footer><input id="inp" placeholder="Message likho..."><button id="send">Send</button></footer>
+<header><div class="logo">hass.ai</div>
+<div class="btns"><button id="student">🎓 Student: OFF</button><button id="new">+ New</button></div></header>
+<div id="chat"></div>
+<footer><div class="box">
+<div id="prev"><img id="pimg"><span id="px">×</span></div>
+<div class="bar">
+<button class="ic" id="att">📎</button>
+<input type="file" id="file" accept="image/*" hidden>
+<textarea id="inp" rows="1" placeholder="Message likho..."></textarea>
+<button class="ic" id="send">➤</button>
+</div></div></footer>
 <script>
-let student=false, history=[];
-const chat=document.getElementById("chat"), inp=document.getElementById("inp"), sb=document.getElementById("student");
-sb.onclick=()=>{student=!student;sb.classList.toggle("on",student);sb.textContent="Student Mode: "+(student?"ON":"OFF")};
-function add(t,c){const d=document.createElement("div");d.className="m "+c;d.textContent=t;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;return d}
+let student=false,history=[],img=null;
+const chat=document.getElementById("chat"),inp=document.getElementById("inp"),sb=document.getElementById("student");
+const T="\x60\x60\x60",B="\x60";
+const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const fmt=s=>esc(s).replace(new RegExp(T+"([\\s\\S]*?)"+T,"g"),"<pre>$1</pre>").replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(new RegExp(B+"([^"+B+"]+)"+B,"g"),"<code>$1</code>").replace(/\n/g,"<br>");
+function add(html,who){const r=document.createElement("div");r.className="row "+who;r.innerHTML='<div class="av">'+(who==="u"?"U":"AI")+'</div><div class="m">'+html+'</div>';chat.appendChild(r);chat.scrollTop=chat.scrollHeight;return r.querySelector(".m")}
+function welcome(){chat.innerHTML="";const m=add("Salam! Main <b>hass.ai</b> hon 👋 Kuch bhi pucho, ya photo bhejo (📎).",'b');
+const c=document.createElement("div");c.className="chips";
+["Photosynthesis samjhao","Meri Urdu essay improve karo","Python seekhna hai"].forEach(t=>{const b=document.createElement("button");b.textContent=t;b.onclick=()=>{inp.value=t;send()};c.appendChild(b)});m.appendChild(c)}
+sb.onclick=()=>{student=!student;sb.classList.toggle("on",student);sb.textContent="🎓 Student: "+(student?"ON":"OFF")};
+document.getElementById("new").onclick=()=>{history=[];clearImg();welcome()};
+document.getElementById("att").onclick=()=>document.getElementById("file").click();
+document.getElementById("px").onclick=clearImg;
+function clearImg(){img=null;document.getElementById("prev").style.display="none";document.getElementById("file").value=""}
+document.getElementById("file").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const i=new Image();i.onload=()=>{const s=Math.min(1,1024/Math.max(i.width,i.height));const c=document.createElement("canvas");c.width=i.width*s;c.height=i.height*s;c.getContext("2d").drawImage(i,0,0,c.width,c.height);img=c.toDataURL("image/jpeg",0.8);document.getElementById("pimg").src=img;document.getElementById("prev").style.display="block"};i.src=r.result};r.readAsDataURL(f)};
 async function send(){
-  const t=inp.value.trim(); if(!t)return; inp.value="";
-  add(t,"u"); history.push({role:"user",text:t});
-  const w=add("Soch raha hon...","b");
-  try{
-    const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:history,student})});
-    const d=await r.json(); w.textContent=d.reply||"Error aa gaya";
-    history.push({role:"model",text:w.textContent});
-  }catch(e){w.textContent="Net ka masla, dobara try karo."}
-}
+const t=inp.value.trim();if(!t&&!img)return;
+const text=t||"Is image ko padho aur samjhao.";
+inp.value="";inp.style.height="auto";
+add((img?'<img src="'+img+'">':"")+esc(text),"u");
+history.push({role:"user",text});
+const body={messages:history,student};
+if(img)body.image={mime:"image/jpeg",data:img.split(",")[1]};
+clearImg();
+const w=add('<span class="dots"><span>●</span><span>●</span><span>●</span></span>',"b");
+try{
+const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+const d=await r.json();const reply=d.reply||"Error aa gaya";
+w.innerHTML=fmt(reply);history.push({role:"model",text:reply});
+}catch(e){w.textContent="Net ka masla, dobara try karo."}
+chat.scrollTop=chat.scrollHeight}
 document.getElementById("send").onclick=send;
-inp.addEventListener("keydown",e=>{if(e.key==="Enter")send()});
+inp.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send()}});
+inp.addEventListener("input",()=>{inp.style.height="auto";inp.style.height=Math.min(inp.scrollHeight,120)+"px"});
+welcome();
 </script></body></html>
